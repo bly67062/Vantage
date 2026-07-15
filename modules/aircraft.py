@@ -35,8 +35,11 @@ from modules.base import BaseModule
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-HOME_LATITUDE  = 39.7684
-HOME_LONGITUDE = -86.1581
+# Fixed collector anchor (zip 46227, south Indianapolis). The traffic
+# collector stays pinned here regardless of the dashboard zip so its
+# accumulated sighting history keeps one consistent reference frame.
+HOME_LATITUDE  = 39.6789
+HOME_LONGITUDE = -86.1302
 HOME_TIMEZONE  = "America/Indiana/Indianapolis"
 
 WATCH_RADIUS_KM = 45     # how far out to poll OpenSky around home
