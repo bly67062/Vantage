@@ -53,6 +53,8 @@ def load_modules():
                     loaded.append(instance)
             except TypeError:
                 continue
+    # Dashboard order: explicit `order` attribute, then name as a tiebreaker.
+    loaded.sort(key=lambda m: (getattr(m, 'order', 100), m.name))
     return loaded
 
 active_modules = load_modules()

@@ -200,6 +200,7 @@ def summarize_windows(windows, step_minutes):
 class AircraftTrafficModule(BaseModule):
     name     = "Aircraft Traffic"
     interval = 300  # poll every 5 minutes - anonymous OpenSky access is rate-limited
+    order    = 30
 
     def __init__(self):
         self._last_data = {}

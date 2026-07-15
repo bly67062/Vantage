@@ -77,6 +77,7 @@ def sky_type_for(cloud_bucket):
 class SunriseSunsetModule(BaseModule):
     name     = "Sunrise / Sunset"
     interval = 3600  # refresh hourly
+    order    = 10
 
     def __init__(self):
         self._forecast_url  = None   # cached NWS gridpoint URL for current zip

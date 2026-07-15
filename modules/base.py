@@ -6,9 +6,13 @@ class BaseModule:
 
     # Display name shown on the dashboard card
     name = "Base Module"
-    
+
     # How often to run in seconds (3600 = 1 hour)
     interval = 3600
+
+    # Dashboard sort position (lower = earlier). Modules with the same order
+    # fall back to alphabetical by name.
+    order = 100
 
     def fetch(self):
         """

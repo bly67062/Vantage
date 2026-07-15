@@ -103,6 +103,7 @@ def _compass(deg):
 class AirQualityModule(BaseModule):
     name     = "Sky Clarity"
     interval = 1800  # refresh every 30 minutes
+    order    = 20
 
     def __init__(self):
         self._last_data = {}

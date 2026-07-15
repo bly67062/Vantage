@@ -3,6 +3,7 @@ from modules.base import BaseModule
 class AuroraModule(BaseModule):
     name = "Aurora"
     interval = 900  # check every 15 minutes
+    order = 40
 
     def __init__(self):
         self.kp_value = None
