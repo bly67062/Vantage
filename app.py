@@ -1,10 +1,22 @@
 import importlib
 import pkgutil
+from datetime import datetime
 import modules
 from scheduler import VantageScheduler
-from flask import Flask, jsonify, render_template, redirect
+from flask import Flask, jsonify, render_template
 
 app = Flask(__name__)
+
+@app.template_filter('fmt_time')
+def fmt_time(iso_str):
+    """Format an ISO8601 string as '6:14 PM · Wed Jul 15' without relying on
+    platform-specific strftime flags (Windows lacks %-I / %-d)."""
+    try:
+        d = datetime.fromisoformat(iso_str)
+    except (TypeError, ValueError):
+        return iso_str
+    hour = d.strftime('%I').lstrip('0') or '12'
+    return f"{hour}:{d.strftime('%M %p')} · {d.strftime('%a %b')} {d.day}"
 
 def load_modules():
     """Scan the modules folder and load anything that isn't base.py"""
@@ -29,7 +41,18 @@ scheduler = VantageScheduler(active_modules)
 
 @app.route('/')
 def dashboard():
-    return redirect('/api/status')
+    """Render the dashboard with each module's current status."""
+    results = []
+    for mod in active_modules:
+        try:
+            data = mod.status()
+        except Exception as e:
+            data = {'error': str(e)}
+        results.append({'name': mod.name, 'data': data})
+    now = datetime.now()
+    hour = now.strftime('%I').lstrip('0') or '12'
+    generated_at = f"{now.strftime('%a %b')} {now.day} · {hour}:{now.strftime('%M %p')}"
+    return render_template('dashboard.html', modules=results, generated_at=generated_at)
 
 @app.route('/api/status')
 def api_status():
