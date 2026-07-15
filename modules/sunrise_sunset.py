@@ -35,16 +35,13 @@ from datetime import datetime, timedelta, timezone
 from astral import LocationInfo
 from astral.sun import sun
 from modules.base import BaseModule
+from location import get_location
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-# Indianapolis coordinates
-LATITUDE  = 39.7684
-LONGITUDE = -86.1581
-TIMEZONE  = "America/Indiana/Indianapolis"
-
-# NWS API — no key required, just a descriptive User-Agent
-NWS_POINTS_URL = f"https://api.weather.gov/points/{LATITUDE},{LONGITUDE}"
+# Location is read from the shared location store (location.py) at fetch time,
+# so the dashboard zip entry drives this module. NWS requires no key, just a
+# descriptive User-Agent.
 NWS_USER_AGENT = "(Vantage photography tracker, joefent@Gmail.com)"
 
 # ntfy.sh topic for push alerts — change to your topic
@@ -63,9 +60,16 @@ class SunriseSunsetModule(BaseModule):
     interval = 3600  # refresh hourly
 
     def __init__(self):
-        self._forecast_url  = None   # populated on first fetch
+        self._forecast_url  = None   # cached NWS gridpoint URL for current zip
+        self._forecast_zip  = None   # zip the cached URL belongs to
         self._last_data     = {}     # raw results dict
         self._alert_sent    = {}     # track sent alerts: {event_key: True}
+        # Location, refreshed from the shared store at the start of each fetch.
+        self._lat = None
+        self._lon = None
+        self._tz = None
+        self._zip = None
+        self._place = None
         self._init_db()
 
     # ── Database ──────────────────────────────────────────────────────────────
@@ -109,19 +113,21 @@ class SunriseSunsetModule(BaseModule):
         NWS requires a two-step lookup:
           1. /points/{lat},{lon}  →  returns the gridpoint URL
           2. gridpoint URL/forecast/hourly  →  actual hourly data
-        We cache the gridpoint URL so we only hit step 1 once.
+        We cache the gridpoint URL per location, and re-resolve it whenever the
+        dashboard zip changes.
         """
-        if self._forecast_url:
+        if self._forecast_url and self._forecast_zip == self._zip:
             return self._forecast_url
 
         resp = requests.get(
-            NWS_POINTS_URL,
-            headers={"User-Agent": "joefent@gmail.com"},
+            f"https://api.weather.gov/points/{self._lat},{self._lon}",
+            headers={"User-Agent": NWS_USER_AGENT},
             timeout=10
         )
         resp.raise_for_status()
         props = resp.json()["properties"]
         self._forecast_url = props["forecastHourly"]
+        self._forecast_zip = self._zip
         return self._forecast_url
 
     def _fetch_hourly_forecast(self):
@@ -143,11 +149,11 @@ class SunriseSunsetModule(BaseModule):
         Uses the Astral library — no external API needed.
         """
         location = LocationInfo(
-            name="Indianapolis",
+            name=self._place or "Home",
             region="USA",
-            timezone=TIMEZONE,
-            latitude=LATITUDE,
-            longitude=LONGITUDE
+            timezone=self._tz,
+            latitude=self._lat,
+            longitude=self._lon
         )
         s = sun(location.observer, date=date, tzinfo=location.timezone)
         return s["sunrise"], s["sunset"]
@@ -294,6 +300,10 @@ class SunriseSunsetModule(BaseModule):
         Fetch hourly forecast and score the next sunrise and sunset.
         Results are stored in self._last_data and written to SQLite.
         """
+        loc = get_location()
+        self._lat, self._lon, self._tz = loc["lat"], loc["lon"], loc["tz"]
+        self._zip, self._place = loc["zip"], loc["place_name"]
+
         now     = datetime.now(timezone.utc)
         today   = now.date()
         results = {}

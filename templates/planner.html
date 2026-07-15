@@ -18,11 +18,21 @@
         <form class="planner-form" method="get" action="/planner">
             <div class="field">
                 <label for="zip">Zip code</label>
-                <input type="text" id="zip" name="zip" value="{{ zip_code }}" placeholder="46201" inputmode="numeric" maxlength="5">
+                <input type="text" id="zip" name="zip" value="{{ zip_code }}" placeholder="46227" inputmode="numeric" maxlength="5">
             </div>
             <div class="field">
                 <label for="date">Date</label>
                 <input type="date" id="date" name="date" value="{{ date }}">
+            </div>
+            <div class="field">
+                <label for="band">Sun position</label>
+                <select id="band" name="band">
+                    {% for key, cfg in bands.items() %}
+                        <option value="{{ key }}" {{ 'selected' if key == band else '' }}>
+                            {{ cfg.label }} ({{ cfg.floor }}–{{ cfg.ceiling }}°)
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
             <button type="submit">Find windows</button>
         </form>
@@ -43,26 +53,40 @@
                     </p>
                 {% endif %}
 
-                {% if not result.windows %}
-                    <p class="empty-text">No low-sun windows found for this date.</p>
+                {% if not result.has_windows %}
+                    <p class="empty-text">The sun doesn't reach this elevation band on this date here.</p>
                 {% else %}
-                    <div class="window-list">
-                        {% for w in result.windows %}
-                            <div class="window-row {{ 'prime' if w.prime else '' }}">
-                                <span class="w-time">{{ w.time|fmt_clock }}</span>
-                                <span class="w-compass">{{ w.compass }} · {{ w.azimuth }}°</span>
-                                <span class="w-elevation">{{ w.elevation }}° up</span>
-                                {% if w.prime %}<span class="w-prime-badge">prime</span>{% endif %}
-                                <span class="w-traffic">
-                                    {% if w.traffic_count is not none %}
-                                        {{ w.traffic_count }} sighting{{ 's' if w.traffic_count != 1 else '' }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </span>
+                    {% for run in result.runs %}
+                        <div class="run">
+                            <div class="run-summary">
+                                <div class="run-when">{{ run.start|fmt_clock }} – {{ run.end|fmt_clock }}</div>
+                                <div class="run-look">
+                                    Look {{ run.compass_start }}{% if run.compass_end != run.compass_start %}→{{ run.compass_end }}{% endif %}
+                                    <span class="run-detail">{{ run.az_start }}°–{{ run.az_end }}° · sun {{ run.elev_min }}°–{{ run.elev_max }}° up</span>
+                                </div>
+                                {% if run.peak_traffic is not none %}
+                                    <div class="run-traffic">peak {{ run.peak_traffic }} sighting{{ 's' if run.peak_traffic != 1 else '' }}</div>
+                                {% endif %}
                             </div>
-                        {% endfor %}
-                    </div>
+                            <div class="window-list">
+                                {% for w in run.rows %}
+                                    <div class="window-row {{ 'prime' if w.prime else '' }}">
+                                        <span class="w-time">{{ w.time|fmt_clock }}</span>
+                                        <span class="w-compass">{{ w.compass }} · {{ w.azimuth }}°</span>
+                                        <span class="w-elevation">{{ w.elevation }}° up</span>
+                                        {% if w.prime %}<span class="w-prime-badge">prime</span>{% endif %}
+                                        <span class="w-traffic">
+                                            {% if w.traffic_count is not none %}
+                                                {{ w.traffic_count }} sighting{{ 's' if w.traffic_count != 1 else '' }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
                 {% endif %}
             </div>
         {% endif %}

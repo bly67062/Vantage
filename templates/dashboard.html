@@ -19,6 +19,18 @@
             </div>
         </header>
 
+        <div class="location-bar">
+            <form class="location-form" method="post" action="/location">
+                <label for="zip">Location</label>
+                <input type="text" id="zip" name="zip" value="{{ loc.zip }}" inputmode="numeric" maxlength="5">
+                <button type="submit">Update</button>
+                <span class="location-name">{{ loc.place_name }}</span>
+            </form>
+            {% if request.args.get('loc_error') %}
+                <span class="error-text">Couldn't find zip "{{ request.args.get('loc_error') }}"</span>
+            {% endif %}
+        </div>
+
         <div class="grid">
         {% for mod in modules %}
             {% set data = mod.data %}

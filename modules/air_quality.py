@@ -32,13 +32,9 @@ from datetime import datetime, timedelta
 from astral import LocationInfo
 from astral.sun import sun
 from modules.base import BaseModule
+from location import get_location
 
 # ── Configuration ────────────────────────────────────────────────────────────
-
-# Indianapolis coordinates (matches modules/sunrise_sunset.py)
-LATITUDE  = 39.7684
-LONGITUDE = -86.1581
-TIMEZONE  = "America/Indiana/Indianapolis"
 
 AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
 FORECAST_URL    = "https://api.open-meteo.com/v1/forecast"
@@ -111,6 +107,11 @@ class AirQualityModule(BaseModule):
     def __init__(self):
         self._last_data = {}
         self._alerted_this_cycle = False
+        # Populated from the shared location store at the start of each fetch.
+        self._lat = None
+        self._lon = None
+        self._tz = None
+        self._place = None
 
     # ── API calls ─────────────────────────────────────────────────────────────
 
@@ -118,11 +119,11 @@ class AirQualityModule(BaseModule):
         resp = requests.get(
             AIR_QUALITY_URL,
             params={
-                "latitude": LATITUDE,
-                "longitude": LONGITUDE,
+                "latitude": self._lat,
+                "longitude": self._lon,
                 "hourly": "pm10,pm2_5,dust,aerosol_optical_depth",
                 "current": "pm10,pm2_5,dust,aerosol_optical_depth,us_aqi",
-                "timezone": TIMEZONE,
+                "timezone": self._tz,
                 "forecast_days": 2,
             },
             timeout=10,
@@ -134,11 +135,11 @@ class AirQualityModule(BaseModule):
         resp = requests.get(
             FORECAST_URL,
             params={
-                "latitude": LATITUDE,
-                "longitude": LONGITUDE,
+                "latitude": self._lat,
+                "longitude": self._lon,
                 "current": "wind_speed_10m,wind_direction_10m",
                 "wind_speed_unit": "mph",
-                "timezone": TIMEZONE,
+                "timezone": self._tz,
             },
             timeout=10,
         )
@@ -163,8 +164,8 @@ class AirQualityModule(BaseModule):
 
     def _get_sun_times(self, date):
         location = LocationInfo(
-            name="Indianapolis", region="USA", timezone=TIMEZONE,
-            latitude=LATITUDE, longitude=LONGITUDE,
+            name=self._place or "Home", region="USA", timezone=self._tz,
+            latitude=self._lat, longitude=self._lon,
         )
         s = sun(location.observer, date=date, tzinfo=location.timezone)
         return s["sunrise"], s["sunset"]
@@ -224,6 +225,10 @@ class AirQualityModule(BaseModule):
     # ── BaseModule interface ─────────────────────────────────────────────────
 
     def fetch(self):
+        loc = get_location()
+        self._lat, self._lon, self._tz = loc["lat"], loc["lon"], loc["tz"]
+        self._place = loc["place_name"]
+
         try:
             aq = self._fetch_air_quality()
         except requests.RequestException as e:
@@ -258,15 +263,16 @@ class AirQualityModule(BaseModule):
                 "from_compass": _compass(wind_deg),
             },
             "sun_events": self._score_sun_events(aq.get("hourly", {})),
+            "place_name": self._place,
             "map": {
-                "lat": LATITUDE,
-                "lon": LONGITUDE,
+                "lat": self._lat,
+                "lon": self._lon,
                 "color": BAND_COLORS.get(band, BAND_COLORS["Unknown"]),
                 "wind_from_deg": wind_deg,
                 "wind_speed_mph": wind_speed,
             },
         }
-        print(f"[Sky Clarity] AOD {aod} -> {band} ({score})")
+        print(f"[Sky Clarity] {self._place}: AOD {aod} -> {band} ({score})")
 
     def status(self):
         if not self._last_data:

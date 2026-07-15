@@ -1,12 +1,13 @@
 import importlib
-import math
 import pkgutil
 from datetime import datetime
-import pgeocode
 import modules
 from scheduler import VantageScheduler
-from flask import Flask, jsonify, render_template, request
-from modules.aircraft import find_intercept_windows, timezone_for_state
+from flask import Flask, jsonify, render_template, request, redirect
+import location
+from modules.aircraft import (
+    find_intercept_windows, summarize_windows, ELEVATION_BANDS, DEFAULT_BAND,
+)
 
 app = Flask(__name__)
 
@@ -55,7 +56,6 @@ def load_modules():
 
 active_modules = load_modules()
 scheduler = VantageScheduler(active_modules)
-_geocoder = pgeocode.Nominatim('us')
 
 @app.route('/')
 def dashboard():
@@ -70,41 +70,59 @@ def dashboard():
     now = datetime.now()
     hour = now.strftime('%I').lstrip('0') or '12'
     generated_at = f"{now.strftime('%a %b')} {now.day} · {hour}:{now.strftime('%M %p')}"
-    return render_template('dashboard.html', modules=results, generated_at=generated_at)
+    return render_template('dashboard.html', modules=results, generated_at=generated_at,
+                            loc=location.get_location())
+
+@app.route('/location', methods=['POST'])
+def update_location():
+    """Set the dashboard zip, then re-fetch modules so the change shows
+    immediately. Invalid zips redirect back with an error and change nothing."""
+    zip_code = request.form.get('zip', '').strip()
+    loc = location.set_location(zip_code)
+    if loc is None:
+        return redirect(f'/?loc_error={zip_code}')
+    for mod in active_modules:
+        try:
+            mod.fetch()
+        except Exception:
+            pass
+    return redirect('/')
 
 @app.route('/planner')
 def planner():
-    """Sun/aircraft intercept planner: zip + date -> low-sun windows with
-    whatever traffic history has accumulated near that location."""
+    """Sun/aircraft intercept planner: zip + date + elevation band -> sun
+    windows with whatever traffic history has accumulated near that location."""
     zip_code = request.args.get('zip', '').strip()
     date_str = request.args.get('date', '').strip()
+    band = request.args.get('band', DEFAULT_BAND)
+    if band not in ELEVATION_BANDS:
+        band = DEFAULT_BAND
     result = None
     error = None
 
     if zip_code:
-        geo = _geocoder.query_postal_code(zip_code)
-        if geo is None or math.isnan(geo.latitude):
+        geo = location.geocode(zip_code)
+        if geo is None:
             error = f"Couldn't find zip code \"{zip_code}\""
         else:
-            lat, lon = float(geo.latitude), float(geo.longitude)
-            tz_name = timezone_for_state(geo.state_code)
-
             try:
                 target_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date()
             except ValueError:
                 target_date = datetime.now().date()
                 error = "Invalid date - showing today instead"
 
-            windows, has_traffic_data = find_intercept_windows(lat, lon, target_date, tz_name)
+            windows, has_traffic_data = find_intercept_windows(
+                geo['lat'], geo['lon'], target_date, geo['tz'], band=band)
             result = {
-                'place_name': f"{geo.place_name}, {geo.state_code}",
+                'place_name': geo['place_name'],
                 'date': target_date.isoformat(),
-                'windows': windows,
+                'runs': summarize_windows(windows, ELEVATION_BANDS[band]['step']),
+                'has_windows': bool(windows),
                 'has_traffic_data': has_traffic_data,
             }
 
     return render_template('planner.html', zip_code=zip_code, date=date_str,
-                            result=result, error=error)
+                            band=band, bands=ELEVATION_BANDS, result=result, error=error)
 
 @app.route('/api/status')
 def api_status():

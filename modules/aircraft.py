@@ -48,32 +48,17 @@ BEARING_BIN_DEG = 22.5   # 16-point compass
 COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
 
-# Approximate primary IANA timezone per US state. Good enough for regional
-# scouting; a handful of states (IN, MI, KY, TN, FL, TX...) really do split
-# across two zones, so results near those internal boundaries can be off by
-# an hour. Not worth a geospatial timezone-lookup dependency for a planning
-# tool.
-STATE_TIMEZONES = {
-    'AL': 'America/Chicago', 'AK': 'America/Anchorage', 'AZ': 'America/Phoenix',
-    'AR': 'America/Chicago', 'CA': 'America/Los_Angeles', 'CO': 'America/Denver',
-    'CT': 'America/New_York', 'DE': 'America/New_York', 'DC': 'America/New_York',
-    'FL': 'America/New_York', 'GA': 'America/New_York', 'HI': 'Pacific/Honolulu',
-    'ID': 'America/Denver', 'IL': 'America/Chicago', 'IN': 'America/Indiana/Indianapolis',
-    'IA': 'America/Chicago', 'KS': 'America/Chicago', 'KY': 'America/New_York',
-    'LA': 'America/Chicago', 'ME': 'America/New_York', 'MD': 'America/New_York',
-    'MA': 'America/New_York', 'MI': 'America/Detroit', 'MN': 'America/Chicago',
-    'MS': 'America/Chicago', 'MO': 'America/Chicago', 'MT': 'America/Denver',
-    'NE': 'America/Chicago', 'NV': 'America/Los_Angeles', 'NH': 'America/New_York',
-    'NJ': 'America/New_York', 'NM': 'America/Denver', 'NY': 'America/New_York',
-    'NC': 'America/New_York', 'ND': 'America/Chicago', 'OH': 'America/New_York',
-    'OK': 'America/Chicago', 'OR': 'America/Los_Angeles', 'PA': 'America/New_York',
-    'RI': 'America/New_York', 'SC': 'America/New_York', 'SD': 'America/Chicago',
-    'TN': 'America/Chicago', 'TX': 'America/Chicago', 'UT': 'America/Denver',
-    'VT': 'America/New_York', 'VA': 'America/New_York', 'WA': 'America/Los_Angeles',
-    'WV': 'America/New_York', 'WI': 'America/Chicago', 'WY': 'America/Denver',
-}
-
 EARTH_RADIUS_KM = 6371.0
+
+# Elevation-band presets for the planner. Each maps a photographer-friendly
+# label to the sun-elevation range it covers, the sub-band worth flagging as
+# "prime," and how finely to sample time (coarser for wider bands).
+ELEVATION_BANDS = {
+    "golden": {"label": "Golden hour", "floor": 0,  "ceiling": 20, "prime_lo": 1,  "prime_hi": 15, "step": 5},
+    "midday": {"label": "Midday",      "floor": 45, "ceiling": 90, "prime_lo": 60, "prime_hi": 90, "step": 10},
+    "all":    {"label": "All daylight","floor": 0,  "ceiling": 90, "prime_lo": 1,  "prime_hi": 15, "step": 15},
+}
+DEFAULT_BAND = "golden"
 
 # ── Geo helpers ──────────────────────────────────────────────────────────────
 
@@ -100,18 +85,13 @@ def compass(deg):
     return COMPASS[int((deg / 22.5) + 0.5) % 16]
 
 
-def timezone_for_state(state_code):
-    return STATE_TIMEZONES.get((state_code or "").upper(), HOME_TIMEZONE)
-
-
 # ── Sun geometry ─────────────────────────────────────────────────────────────
 
 def sun_path(lat, lon, target_date, tz_name, step_minutes=5,
              elevation_floor=-2, elevation_ceiling=25):
     """
     Sample the sun's azimuth/elevation through the day at `step_minutes`
-    resolution, restricted to the low-sun band that's relevant for
-    silhouette shots (elevation_floor/ceiling in degrees).
+    resolution, restricted to an elevation band (degrees).
     """
     observer = Observer(latitude=lat, longitude=lon)
     tz = ZoneInfo(tz_name)
@@ -149,16 +129,17 @@ def traffic_count_near(bearing, elev_deg, bearing_tolerance=15, elev_tolerance=5
     return row[0] if row else 0
 
 
-def find_intercept_windows(lat, lon, target_date, tz_name,
-                            prime_floor=1, prime_ceiling=15):
+def find_intercept_windows(lat, lon, target_date, tz_name, band=DEFAULT_BAND):
     """
-    Sun path for the day, restricted to the shootable low-sun band, each
-    sample annotated with how much aircraft traffic has historically been
-    seen in that patch of sky (only if the point falls within the home
-    watch radius - data doesn't exist anywhere else yet).
+    Sun path for the day within the requested elevation band, each sample
+    annotated with how much aircraft traffic has historically been seen in
+    that patch of sky (only if the point falls within the home watch radius -
+    data doesn't exist anywhere else yet).
     """
+    cfg = ELEVATION_BANDS.get(band, ELEVATION_BANDS[DEFAULT_BAND])
     samples = sun_path(lat, lon, target_date, tz_name,
-                        elevation_floor=0, elevation_ceiling=20)
+                       step_minutes=cfg["step"],
+                       elevation_floor=cfg["floor"], elevation_ceiling=cfg["ceiling"])
     has_traffic_data = haversine_km(lat, lon, HOME_LATITUDE, HOME_LONGITUDE) <= WATCH_RADIUS_KM
 
     windows = []
@@ -169,10 +150,49 @@ def find_intercept_windows(lat, lon, target_date, tz_name,
             "azimuth": round(s["azimuth"], 1),
             "compass": compass(s["azimuth"]),
             "elevation": round(s["elevation"], 1),
-            "prime": prime_floor <= s["elevation"] <= prime_ceiling,
+            "prime": cfg["prime_lo"] <= s["elevation"] <= cfg["prime_hi"],
             "traffic_count": traffic,
         })
     return windows, has_traffic_data
+
+
+def summarize_windows(windows, step_minutes):
+    """
+    Group windows into contiguous runs (e.g. a morning rise and an evening
+    set land in separate runs) and summarize each so the planner can show
+    "look this way" at a glance rather than only a long row list.
+    """
+    if not windows:
+        return []
+
+    gap = timedelta(minutes=step_minutes * 1.5)
+    runs = []
+    current = [windows[0]]
+
+    for prev, w in zip(windows, windows[1:]):
+        if (w["time"] - prev["time"]) <= gap:
+            current.append(w)
+        else:
+            runs.append(current)
+            current = [w]
+    runs.append(current)
+
+    summaries = []
+    for run in runs:
+        traffic_vals = [w["traffic_count"] for w in run if w["traffic_count"] is not None]
+        summaries.append({
+            "start": run[0]["time"],
+            "end": run[-1]["time"],
+            "az_start": run[0]["azimuth"],
+            "az_end": run[-1]["azimuth"],
+            "compass_start": run[0]["compass"],
+            "compass_end": run[-1]["compass"],
+            "elev_min": min(w["elevation"] for w in run),
+            "elev_max": max(w["elevation"] for w in run),
+            "peak_traffic": max(traffic_vals) if traffic_vals else None,
+            "rows": run,
+        })
+    return summaries
 
 
 # ── Collector (BaseModule) ──────────────────────────────────────────────────

@@ -70,6 +70,58 @@ header.top .meta {
     border-bottom-color: var(--clay);
 }
 
+.location-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.location-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.location-form label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+}
+
+.location-form input {
+    font-family: inherit;
+    font-size: 14px;
+    width: 80px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.location-form button {
+    font-family: inherit;
+    font-size: 12px;
+    padding: 6px 14px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.location-form button:hover {
+    border-color: var(--clay);
+    color: var(--clay);
+}
+
+.location-name {
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -321,7 +373,8 @@ header.top .meta {
     color: var(--ink-soft);
 }
 
-.planner-form input {
+.planner-form input,
+.planner-form select {
     font-family: inherit;
     font-size: 14px;
     padding: 8px 10px;
@@ -344,6 +397,46 @@ header.top .meta {
 
 .planner-form button:hover {
     opacity: 0.9;
+}
+
+.run {
+    margin-bottom: 24px;
+}
+
+.run:last-child {
+    margin-bottom: 0;
+}
+
+.run-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.run-when {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    flex: none;
+}
+
+.run-look {
+    flex: 1;
+    font-size: 13px;
+    color: var(--clay);
+}
+
+.run-detail {
+    color: var(--ink-soft);
+    margin-left: 8px;
+}
+
+.run-traffic {
+    font-size: 12px;
+    color: var(--ink-soft);
 }
 
 .window-list {
