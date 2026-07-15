@@ -1,22 +1,39 @@
 import importlib
+import math
 import pkgutil
 from datetime import datetime
+import pgeocode
 import modules
 from scheduler import VantageScheduler
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
+from modules.aircraft import find_intercept_windows, timezone_for_state
 
 app = Flask(__name__)
 
 @app.template_filter('fmt_time')
-def fmt_time(iso_str):
-    """Format an ISO8601 string as '6:14 PM · Wed Jul 15' without relying on
-    platform-specific strftime flags (Windows lacks %-I / %-d)."""
-    try:
-        d = datetime.fromisoformat(iso_str)
-    except (TypeError, ValueError):
-        return iso_str
+def fmt_time(value):
+    """Format a datetime (or ISO8601 string) as '6:14 PM · Wed Jul 15' without
+    relying on platform-specific strftime flags (Windows lacks %-I / %-d)."""
+    if isinstance(value, datetime):
+        d = value
+    else:
+        try:
+            d = datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return value
     hour = d.strftime('%I').lstrip('0') or '12'
     return f"{hour}:{d.strftime('%M %p')} · {d.strftime('%a %b')} {d.day}"
+
+@app.template_filter('fmt_clock')
+def fmt_clock(value):
+    """Format a datetime as just '6:14 PM', for compact list rows."""
+    if not isinstance(value, datetime):
+        try:
+            value = datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return value
+    hour = value.strftime('%I').lstrip('0') or '12'
+    return f"{hour}:{value.strftime('%M %p')}"
 
 def load_modules():
     """Scan the modules folder and load anything that isn't base.py"""
@@ -38,6 +55,7 @@ def load_modules():
 
 active_modules = load_modules()
 scheduler = VantageScheduler(active_modules)
+_geocoder = pgeocode.Nominatim('us')
 
 @app.route('/')
 def dashboard():
@@ -53,6 +71,40 @@ def dashboard():
     hour = now.strftime('%I').lstrip('0') or '12'
     generated_at = f"{now.strftime('%a %b')} {now.day} · {hour}:{now.strftime('%M %p')}"
     return render_template('dashboard.html', modules=results, generated_at=generated_at)
+
+@app.route('/planner')
+def planner():
+    """Sun/aircraft intercept planner: zip + date -> low-sun windows with
+    whatever traffic history has accumulated near that location."""
+    zip_code = request.args.get('zip', '').strip()
+    date_str = request.args.get('date', '').strip()
+    result = None
+    error = None
+
+    if zip_code:
+        geo = _geocoder.query_postal_code(zip_code)
+        if geo is None or math.isnan(geo.latitude):
+            error = f"Couldn't find zip code \"{zip_code}\""
+        else:
+            lat, lon = float(geo.latitude), float(geo.longitude)
+            tz_name = timezone_for_state(geo.state_code)
+
+            try:
+                target_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else datetime.now().date()
+            except ValueError:
+                target_date = datetime.now().date()
+                error = "Invalid date - showing today instead"
+
+            windows, has_traffic_data = find_intercept_windows(lat, lon, target_date, tz_name)
+            result = {
+                'place_name': f"{geo.place_name}, {geo.state_code}",
+                'date': target_date.isoformat(),
+                'windows': windows,
+                'has_traffic_data': has_traffic_data,
+            }
+
+    return render_template('planner.html', zip_code=zip_code, date=date_str,
+                            result=result, error=error)
 
 @app.route('/api/status')
 def api_status():

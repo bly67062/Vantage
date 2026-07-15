@@ -13,7 +13,10 @@
     <div class="page">
         <header class="top">
             <h1>Vantage</h1>
-            <div class="meta">{{ generated_at }}</div>
+            <div class="top-right">
+                <a class="nav-link" href="/planner">Aircraft planner</a>
+                <div class="meta">{{ generated_at }}</div>
+            </div>
         </header>
 
         <div class="grid">
@@ -132,6 +135,30 @@
                             {% endif %}
                         })();
                         </script>
+                    {% endif %}
+
+                {% elif data.total_observations is defined %}
+                    <h2>{{ mod.name }}</h2>
+                    {% if data.status == 'error' %}
+                        <p class="error-text">{{ data.error }}</p>
+                    {% elif data.status == 'pending' %}
+                        <p class="empty-text">Collecting...</p>
+                    {% else %}
+                        <div class="kp-figure">
+                            <span class="kp-value">{{ data.total_observations }}</span>
+                            <span class="kp-label">sightings logged</span>
+                        </div>
+                        <div class="threshold-note">
+                            {{ data.unique_aircraft }} unique aircraft · collecting since {{ data.collecting_since|fmt_time if data.collecting_since else 'just now' }}
+                        </div>
+                        {% if data.top_bearings %}
+                            <div class="bearing-chips">
+                                {% for b in data.top_bearings %}
+                                    <span class="chip">{{ b.compass }} · {{ b.count }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <a class="planner-link" href="/planner">Plan a shoot →</a>
                     {% endif %}
 
                 {% else %}

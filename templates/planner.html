@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vantage · Aircraft Planner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="page">
+        <header class="top">
+            <h1>Aircraft Planner</h1>
+            <div class="top-right">
+                <a class="nav-link" href="/">Dashboard</a>
+            </div>
+        </header>
+
+        <form class="planner-form" method="get" action="/planner">
+            <div class="field">
+                <label for="zip">Zip code</label>
+                <input type="text" id="zip" name="zip" value="{{ zip_code }}" placeholder="46201" inputmode="numeric" maxlength="5">
+            </div>
+            <div class="field">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" value="{{ date }}">
+            </div>
+            <button type="submit">Find windows</button>
+        </form>
+
+        {% if error %}
+            <p class="error-text">{{ error }}</p>
+        {% endif %}
+
+        {% if result %}
+            <div class="card">
+                <h2>{{ result.place_name }} — {{ result.date }}</h2>
+
+                {% if not result.has_traffic_data %}
+                    <p class="empty-text">
+                        No aircraft traffic history for this location yet — showing sun geometry only.
+                        Traffic data only accumulates within the home watch radius; try a zip near Indianapolis
+                        to see traffic-weighted windows.
+                    </p>
+                {% endif %}
+
+                {% if not result.windows %}
+                    <p class="empty-text">No low-sun windows found for this date.</p>
+                {% else %}
+                    <div class="window-list">
+                        {% for w in result.windows %}
+                            <div class="window-row {{ 'prime' if w.prime else '' }}">
+                                <span class="w-time">{{ w.time|fmt_clock }}</span>
+                                <span class="w-compass">{{ w.compass }} · {{ w.azimuth }}°</span>
+                                <span class="w-elevation">{{ w.elevation }}° up</span>
+                                {% if w.prime %}<span class="w-prime-badge">prime</span>{% endif %}
+                                <span class="w-traffic">
+                                    {% if w.traffic_count is not none %}
+                                        {{ w.traffic_count }} sighting{{ 's' if w.traffic_count != 1 else '' }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

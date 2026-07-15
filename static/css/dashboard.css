@@ -46,11 +46,28 @@ header.top h1 {
     margin: 0;
 }
 
+header.top .top-right {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+}
+
 header.top .meta {
     font-size: 12px;
     color: var(--ink-soft);
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+.nav-link {
+    font-size: 13px;
+    color: var(--clay);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.nav-link:hover {
+    border-bottom-color: var(--clay);
 }
 
 .grid {
@@ -247,6 +264,145 @@ header.top .meta {
 
 .wind-caveat {
     font-style: italic;
+}
+
+/* ---- Aircraft Traffic card ---- */
+
+.bearing-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+}
+
+.chip {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+}
+
+.planner-link {
+    display: inline-block;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--clay);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.planner-link:hover {
+    border-bottom-color: var(--clay);
+}
+
+/* ---- Planner page ---- */
+
+.planner-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+}
+
+.planner-form .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.planner-form label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+}
+
+.planner-form input {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.planner-form button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 9px 18px;
+    border: 1px solid var(--clay);
+    border-radius: 4px;
+    background: var(--clay);
+    color: var(--paper);
+    cursor: pointer;
+}
+
+.planner-form button:hover {
+    opacity: 0.9;
+}
+
+.window-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.window-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 4px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+}
+
+.window-row:first-of-type {
+    border-top: none;
+}
+
+.window-row.prime {
+    background: var(--bg);
+    border-radius: 4px;
+    padding-left: 10px;
+}
+
+.window-row .w-time {
+    flex: none;
+    width: 70px;
+    font-weight: 600;
+}
+
+.window-row .w-compass {
+    flex: none;
+    width: 100px;
+    color: var(--ink-soft);
+}
+
+.window-row .w-elevation {
+    flex: none;
+    width: 70px;
+    color: var(--ink-soft);
+}
+
+.window-row .w-prime-badge {
+    flex: none;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--clay);
+    border: 1px solid var(--clay);
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.window-row .w-traffic {
+    flex: 1;
+    text-align: right;
+    color: var(--ink-soft);
 }
 
 /* ---- Generic fallback ---- */
