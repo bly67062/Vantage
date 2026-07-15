@@ -226,6 +226,29 @@ header.top .meta {
     color: var(--ink-soft);
 }
 
+/* ---- Sky Clarity card ---- */
+
+.map-wrap {
+    margin-top: 16px;
+}
+
+.aq-map {
+    height: 160px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    filter: saturate(0.5) sepia(0.15);
+}
+
+.wind-note {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+}
+
+.wind-caveat {
+    font-style: italic;
+}
+
 /* ---- Generic fallback ---- */
 
 .kv-row {

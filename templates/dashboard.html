@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Vantage</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <meta http-equiv="refresh" content="300">
 </head>
 <body>
@@ -64,6 +66,72 @@
                                 <span class="score-num">{{ ev.score }}</span>
                             </div>
                         {% endfor %}
+                    {% endif %}
+
+                {% elif data.band is defined %}
+                    <h2>
+                        {{ mod.name }}
+                        <span class="pill" style="border-color: {{ data.color }}; color: {{ data.color }};">{{ data.band }}</span>
+                    </h2>
+                    {% if data.status == 'error' %}
+                        <p class="error-text">{{ data.error }}</p>
+                    {% elif data.status == 'pending' %}
+                        <p class="empty-text">No reading yet</p>
+                    {% else %}
+                        <div class="kp-figure">
+                            <span class="kp-value" style="color: {{ data.color }};">{{ data.score }}</span>
+                            <span class="kp-label">{{ data.source }}</span>
+                        </div>
+                        <div class="gauge">
+                            <div class="gauge-fill" style="width: {{ data.score }}%; background: {{ data.color }};"></div>
+                        </div>
+                        <div class="threshold-note">
+                            AOD {{ data.current.aod }} · PM2.5 {{ data.current.pm2_5 }} µg/m³ · Dust {{ data.current.dust }} µg/m³
+                        </div>
+
+                        {% for ev in data.sun_events %}
+                            <div class="event-row">
+                                <span class="event-name">{{ ev.event }}</span>
+                                <span class="event-time">{{ ev.event_time|fmt_time }}</span>
+                                <div class="bar-track">
+                                    <div class="bar-fill" style="width: {{ ev.score }}%; background: {{ ev.color }};"></div>
+                                </div>
+                                <span class="score-num">{{ ev.score }}</span>
+                            </div>
+                        {% endfor %}
+
+                        <div class="map-wrap">
+                            <div id="map-{{ loop.index }}" class="aq-map"></div>
+                            <div class="wind-note">
+                                Wind {{ data.wind.from_compass }} at {{ data.wind.speed_mph }} mph
+                                <span class="wind-caveat">(drift direction, not a measured plume)</span>
+                            </div>
+                        </div>
+                        <script>
+                        (function() {
+                            var el = document.getElementById("map-{{ loop.index }}");
+                            if (!el || typeof L === "undefined") return;
+                            var lat = {{ data.map.lat }}, lon = {{ data.map.lon }};
+                            var map = L.map(el, {
+                                zoomControl: false, dragging: false, scrollWheelZoom: false,
+                                doubleClickZoom: false, attributionControl: false
+                            }).setView([lat, lon], 7);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                            L.circleMarker([lat, lon], {
+                                radius: 10, color: "{{ data.map.color }}",
+                                fillColor: "{{ data.map.color }}", fillOpacity: 0.55, weight: 2
+                            }).addTo(map);
+                            {% if data.map.wind_from_deg is not none %}
+                            var deg = {{ data.map.wind_from_deg }};
+                            var rad = (deg + 180) * Math.PI / 180; // arrow points where wind is heading
+                            var dLat = Math.cos(rad) * 0.35;
+                            var dLon = Math.sin(rad) * 0.45;
+                            L.polyline([[lat, lon], [lat + dLat, lon + dLon]], {
+                                color: "{{ data.map.color }}", weight: 2, dashArray: "4,4"
+                            }).addTo(map);
+                            {% endif %}
+                        })();
+                        </script>
                     {% endif %}
 
                 {% else %}
