@@ -1,4 +1,5 @@
 import importlib
+import os
 import pkgutil
 from datetime import datetime
 import modules
@@ -135,6 +136,37 @@ def api_status():
             results[mod.name] = {'error': str(e)}
     return jsonify(results)
 
-if __name__ == '__main__':
+def _truthy(value):
+    return (value or '').strip().lower() in ('1', 'true', 'yes', 'on')
+
+
+def serve():
+    """Start the scheduler and serve the app.
+
+    Configured entirely by environment variables so the same code runs on a
+    laptop for dev and on a dedicated always-on box for production:
+
+      VANTAGE_HOST   bind address. Default 127.0.0.1 (localhost only).
+                     Set to 0.0.0.0 to serve the whole LAN.
+      VANTAGE_PORT   TCP port. Default 5002.
+      VANTAGE_DEBUG  when truthy, use Flask's dev server + interactive
+                     debugger (localhost dev only — never on a network).
+                     Otherwise serve with waitress, a production WSGI server.
+    """
+    host = os.environ.get('VANTAGE_HOST', '127.0.0.1')
+    port = int(os.environ.get('VANTAGE_PORT', '5002'))
+    debug = _truthy(os.environ.get('VANTAGE_DEBUG'))
+
     scheduler.start()
-    app.run(debug=True, port=5002, use_reloader=False)
+
+    if debug:
+        print(f"Vantage (dev server) on http://{host}:{port}")
+        app.run(host=host, port=port, debug=True, use_reloader=False)
+    else:
+        from waitress import serve as waitress_serve
+        print(f"Vantage on http://{host}:{port} (waitress)")
+        waitress_serve(app, host=host, port=port)
+
+
+if __name__ == '__main__':
+    serve()

@@ -3,3 +3,4 @@ apscheduler==3.11.2
 astral==3.2
 requests==2.34.1
 pgeocode==0.5.0
+waitress==3.0.2
