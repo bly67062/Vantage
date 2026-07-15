@@ -53,6 +53,25 @@ ALERT_THRESHOLD = 70
 # SQLite database path (relative to project root)
 DB_PATH = "vantage.db"
 
+# Map the internal cloud bucket to a human sky type + an icon key the
+# dashboard renders as a small inline SVG. "partly_cloudy" is the broken
+# mid-level cloud that scatters vivid color, so it gets its own "vivid" icon.
+SKY_TYPES = {
+    "clear":         ("Clear",           "clear"),
+    "mostly_clear":  ("Mostly clear",    "mostly_clear"),
+    "partly_cloudy": ("Vivid potential", "vivid"),
+    "mostly_cloudy": ("Cloudy",          "cloudy"),
+    "overcast":      ("Overcast",        "overcast"),
+    "fog_haze":      ("Fog / haze",      "fog"),
+    "precip":        ("Wet",             "precip"),
+    "unknown":       ("Unknown",         "unknown"),
+}
+
+
+def sky_type_for(cloud_bucket):
+    """Return (label, icon_key) for a cloud bucket, defaulting to unknown."""
+    return SKY_TYPES.get(cloud_bucket, SKY_TYPES["unknown"])
+
 # ── Module ────────────────────────────────────────────────────────────────────
 
 class SunriseSunsetModule(BaseModule):
@@ -365,12 +384,15 @@ class SunriseSunsetModule(BaseModule):
 
         events = []
         for key, data in sorted(self._last_data.items()):
+            sky_label, sky_icon = sky_type_for(data["factors"].get("cloud_bucket"))
             events.append({
                 "event":      data["event"].capitalize(),
                 "event_time": data["event_time"],
                 "score":      data["score"],
                 "label":      data["label"],
                 "forecast":   data["factors"].get("forecast_text", "N/A"),
+                "sky_type":   sky_label,
+                "sky_icon":   sky_icon,
                 "humidity":   data["factors"].get("relative_humidity", "N/A"),
                 "wind_mph":   data["factors"].get("wind_mph", "N/A"),
             })

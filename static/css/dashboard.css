@@ -236,6 +236,32 @@ header.top .meta {
 .score-moderate { border-color: var(--gold); color: var(--gold); }
 .score-poor { border-color: var(--grey); color: var(--grey); }
 
+.sky-icon {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    margin-left: auto;
+}
+
+.sky-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.sky-icon-sm {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+}
+
+.sky-icon-sm svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
 .best-event .details .event-name {
     font-weight: 600;
     margin-bottom: 2px;

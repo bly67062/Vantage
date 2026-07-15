@@ -1,3 +1,22 @@
+{% macro sky_svg(key) -%}
+{%- if key == 'clear' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.1 5.1l1.6 1.6M17.3 17.3l1.6 1.6M18.9 5.1l-1.6 1.6M6.7 17.3l-1.6 1.6"/></svg>
+{%- elif key == 'vivid' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 19.5h17"/><path d="M8 19.5a4 4 0 0 1 8 0"/><path d="M12 7.5v2.2M5.6 10.4l1.4 1.2M18.4 10.4l-1.4 1.2M3.6 15.5H5.4M18.6 15.5h1.8"/></svg>
+{%- elif key == 'mostly_clear' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.5" cy="8.8" r="3.1"/><path d="M9.5 3.2v1.6M4.4 8.8H2.8M5.7 5 4.6 3.9M13.3 5.2l1.1-1.1"/><path d="M9.2 18.5h6.4a2.4 2.4 0 0 0 .3-4.8 3.1 3.1 0 0 0-5.9-.6 2.3 2.3 0 0 0-.8 5.4z"/></svg>
+{%- elif key == 'cloudy' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7.4" r="2.4"/><path d="M8 3.4v1.3M4.3 7.4H3.1M5.4 4.8 4.5 3.9"/><path d="M7 18.5h9a3 3 0 0 0 .3-6 4 4 0 0 0-7.6-.8A3 3 0 0 0 7 18.5z"/></svg>
+{%- elif key == 'overcast' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 17.5h9.7a3.2 3.2 0 0 0 .3-6.4 4.3 4.3 0 0 0-8.1-.9A3.2 3.2 0 0 0 6.5 17.5z"/></svg>
+{%- elif key == 'fog' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11.5h8.4a2.7 2.7 0 0 0 .2-5.4 3.6 3.6 0 0 0-6.8-.8A2.7 2.7 0 0 0 7 11.5z"/><path d="M5.5 15.5h11M8 19h8"/></svg>
+{%- elif key == 'precip' -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13.5h9a3 3 0 0 0 .3-6 4 4 0 0 0-7.6-.8A3 3 0 0 0 7 13.5z"/><path d="M9.2 16.5 8 19.5M12 16.5 10.8 19.5M14.8 16.5 13.6 19.5"/></svg>
+{%- else -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7" stroke-dasharray="2 2.6"/></svg>
+{%- endif -%}
+{%- endmacro %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -68,11 +87,13 @@
                             <div class="details">
                                 <div class="event-name">{{ best.label }} {{ best.event }}</div>
                                 <div class="event-time">{{ best.event_time|fmt_time }}</div>
-                                <div class="event-forecast">{{ best.forecast }}</div>
+                                <div class="event-forecast">{{ best.sky_type }} · {{ best.forecast }}</div>
                             </div>
+                            <div class="sky-icon score-{{ best.label|lower }}" title="{{ best.sky_type }}">{{ sky_svg(best.sky_icon) }}</div>
                         </div>
                         {% for ev in data.events %}
                             <div class="event-row">
+                                <span class="sky-icon-sm score-{{ ev.label|lower }}" title="{{ ev.sky_type }}">{{ sky_svg(ev.sky_icon) }}</span>
                                 <span class="event-name">{{ ev.event }}</span>
                                 <span class="event-time">{{ ev.event_time|fmt_time }}</span>
                                 <div class="bar-track">
